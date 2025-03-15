@@ -1,10 +1,10 @@
 name:                satellite
 version:             0.1.0.0
-github:              "githubuser/satellite"
+github:              "zietzm/satellite"
 license:             BSD-3-Clause
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2025 Author name here"
+author:              "Michael Zietz"
+maintainer:          "michael.zietz@gmail.com"
+copyright:           "2025 Michael Zietz"
 
 extra-source-files:
 - README.md
