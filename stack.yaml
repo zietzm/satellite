@@ -49,9 +49,9 @@ extra-deps:
 # Extra package databases containing global packages
 # extra-package-dbs: []
 
-nix:
-  enable: true
-  packages: [fftw, fftwFloat]
+# nix:
+#   enable: true
+#   packages: [fftw, fftwFloat]
 
 # Control whether we use the GHC we find on the path
 # system-ghc: true

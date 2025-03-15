@@ -6,7 +6,7 @@ cabal-version: 2.2
 
 name:           satellite
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/githubuser/satellite#readme>
+description:    Please see the README on GitHub at <https://github.com/zietzm/satellite#readme>
 homepage:       https://github.com/zietzm/satellite#readme
 bug-reports:    https://github.com/zietzm/satellite/issues
 author:         Michael Zietz
