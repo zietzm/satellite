@@ -11,6 +11,13 @@ packages:
       size: 370
   original:
     hackage: vector-fft-0.2.0.0@sha256:c5b9d0543a3a97434079f6e4f2af2feaf188a00421ea8621b295d30eeedd5ee8,1786
+- completed:
+    hackage: vector-fftw-0.1.4.1@sha256:51e46443e79235df51fd1f05da2f43f56ddd55b8fe47c66baafbeb8a3f34dbc6,2928
+    pantry-tree:
+      sha256: 5872f21f65bfbd1ac792cbdd5a540ed5c9bf2a39a8e6c53d8e3259d63749e1c9
+      size: 861
+  original:
+    hackage: vector-fftw-0.1.4.1
 snapshots:
 - completed:
     sha256: 08bd13ce621b41a8f5e51456b38d5b46d7783ce114a50ab604d6bbab0d002146

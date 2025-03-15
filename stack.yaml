@@ -41,18 +41,17 @@ packages:
 #
 extra-deps:
   - vector-fft-0.2.0.0@sha256:c5b9d0543a3a97434079f6e4f2af2feaf188a00421ea8621b295d30eeedd5ee8,1786
-
-# - acme-missiles-0.3
-# - git: https://github.com/commercialhaskell/stack.git
-#   commit: e7b331f14bcffb8367cd58fbfc8b40ec7642100a
-#
-# extra-deps: []
+  - vector-fftw-0.1.4.1
 
 # Override default flag values for project packages and extra-deps
 # flags: {}
 
 # Extra package databases containing global packages
 # extra-package-dbs: []
+
+nix:
+  enable: true
+  packages: [fftw, fftwFloat]
 
 # Control whether we use the GHC we find on the path
 # system-ghc: true

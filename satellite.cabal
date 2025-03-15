@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       Lib
+      Norm
       Signals
       Sync
   other-modules:
@@ -36,12 +37,13 @@ library
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
-      array
+      array >=0.5.6 && <0.6
     , base >=4.7 && <5
-    , dsp
-    , vector
-    , vector-fft
-    , wave
+    , dsp >=0.2.5 && <0.3
+    , vector >=0.13.1 && <0.14
+    , vector-fft >=0.2.0 && <0.3
+    , vector-fftw >=0.1.4 && <0.2
+    , wave >=0.2.1 && <0.3
   default-language: Haskell2010
 
 executable satellite-exe
@@ -54,13 +56,14 @@ executable satellite-exe
       app
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      array
+      array >=0.5.6 && <0.6
     , base >=4.7 && <5
-    , dsp
+    , dsp >=0.2.5 && <0.3
     , satellite
-    , vector
-    , vector-fft
-    , wave
+    , vector >=0.13.1 && <0.14
+    , vector-fft >=0.2.0 && <0.3
+    , vector-fftw >=0.1.4 && <0.2
+    , wave >=0.2.1 && <0.3
   default-language: Haskell2010
 
 test-suite satellite-test
@@ -74,13 +77,14 @@ test-suite satellite-test
       test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      array
+      array >=0.5.6 && <0.6
     , base >=4.7 && <5
-    , dsp
+    , dsp >=0.2.5 && <0.3
     , satellite
     , tasty
     , tasty-hunit
-    , vector
-    , vector-fft
-    , wave
+    , vector >=0.13.1 && <0.14
+    , vector-fft >=0.2.0 && <0.3
+    , vector-fftw >=0.1.4 && <0.2
+    , wave >=0.2.1 && <0.3
   default-language: Haskell2010
