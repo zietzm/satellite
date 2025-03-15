@@ -8,17 +8,21 @@
 # A snapshot resolver dictates the compiler version and the set of packages
 # to be used for project dependencies. For example:
 #
-# snapshot: lts-23.0
+
+compiler: ghc-9.6.6
+snapshot: lts-22.43
+
+# snapshot: lts-23.14
 # snapshot: nightly-2024-12-13
-# snapshot: ghc-9.8.4
+# snapshot: ghc-9.8.2
 #
 # The location of a snapshot can be provided as a file or url. Stack assumes
 # a snapshot provided as a file might change, whereas a url resource does not.
 #
 # snapshot: ./custom-snapshot.yaml
 # snapshot: https://example.com/snapshots/2024-01-01.yaml
-snapshot:
-  url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/23/14.yaml
+# snapshot:
+#   url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/23/14.yaml
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -35,7 +39,9 @@ packages:
 # These entries can reference officially published versions as well as
 # forks / in-progress versions pinned to a git hash. For example:
 #
-# extra-deps:
+extra-deps:
+  - vector-fft-0.2.0.0@sha256:c5b9d0543a3a97434079f6e4f2af2feaf188a00421ea8621b295d30eeedd5ee8,1786
+
 # - acme-missiles-0.3
 # - git: https://github.com/commercialhaskell/stack.git
 #   commit: e7b331f14bcffb8367cd58fbfc8b40ec7642100a
