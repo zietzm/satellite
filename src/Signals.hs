@@ -5,6 +5,7 @@ module Signals
     toFftType,
     fromFftType,
     lowpass,
+    fourierResample,
   )
 where
 
@@ -15,6 +16,7 @@ import qualified Data.Vector.FFT as FFT
 import qualified Data.Vector.Storable as V
 import qualified Data.Vector.Unboxed as U
 import GHC.Float (double2Float, float2Double)
+import qualified Numeric.FFT.Vector.Invertible as FFTW
 
 fft :: V.Vector Float -> U.Vector (Complex Double)
 fft = FFT.fft . toFftType
@@ -62,3 +64,21 @@ lowpass fs fc signal = reverse $ lpf bw w $ reverse $ lpf bw w signal
   where
     w = 2 * pi * fc / fs -- Normalized angular frequency
     bw = 0.707
+
+fourierResample :: Int -> V.Vector Float -> V.Vector Float
+fourierResample nNew xs = result
+  where
+    nOrig = V.length xs
+    mOrig = nOrig `div` 2 + 1
+    mNew = nNew `div` 2 + 1
+    xs' = V.map float2Double xs
+    fftX = FFTW.run FFTW.dftR2C xs'
+    changeLen vec
+      | mNew <= mOrig = V.take mNew vec
+      | otherwise = vec V.++ V.replicate (mNew - mOrig) 0.0
+    fftX' = changeLen fftX
+    resampled = FFTW.run FFTW.dftC2R fftX'
+    -- result = V.map double2Float resampled
+    -- resampled' = V.map (* (fromIntegral nOrig / fromIntegral nNew)) resampled
+    resampled' = V.map (* (fromIntegral nNew / fromIntegral nOrig)) resampled
+    result = V.map double2Float resampled'

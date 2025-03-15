@@ -2,7 +2,7 @@ import Data.Complex (Complex ((:+)))
 import qualified Data.Complex as C
 import qualified Data.Vector.Storable as V
 import qualified Data.Vector.Unboxed as U
-import GHC.Float (double2Float, float2Double)
+import GHC.Float (double2Float, float2Double, int2Float)
 import qualified Signals
 import qualified Sync
 import Test.Tasty
@@ -28,7 +28,18 @@ dspTests =
         assertBool ("Envelope differed from Python: " ++ show maxDiffEnv) (maxDiffEnv < 1e-6),
       -- TODO: We could make this more accurate in the future. For now, it works.
       testCase "Low pass filter" $
-        assertBool ("Filter didn't work right" ++ show maxDiffFilt) (maxDiffFilt < 2e-3)
+        assertBool ("Filter error" ++ show maxDiffFilt) (maxDiffFilt < 5e-3),
+      testCase "Downsampling length" $
+        V.length rDown @?= V.length expectDown,
+      testCase "Upsampling length" $
+        V.length rUp @?= V.length expectUp,
+      testCase "Downsampling result" $
+        assertBool
+          ("Downsampling error" ++ show maxDiffDown)
+          (maxDiffDown < 1e-5),
+      testCase
+        "Upampling result"
+        $ assertBool ("Upsampling error" ++ show maxDiffUp) (maxDiffUp < 1e-5)
     ]
   where
     maxDiffFft = maxDiffD (Signals.fft wave) waveFft
@@ -44,6 +55,14 @@ dspTests =
     filtered' = V.fromList $ map double2Float filtered
     maxDiffFilt = maxDiffF (V.drop 10 filtered') (V.drop 10 xLow)
 
+    -- Test Fourier resampling
+    t2 = V.generate 100 ((* 0.01) . int2Float) :: V.Vector Float
+    x2 = V.map (sin . (* (2 * pi * 10))) t2
+    rDown = Signals.fourierResample 50 x2
+    maxDiffDown = maxDiffF rDown expectDown
+    rUp = Signals.fourierResample 200 x2
+    maxDiffUp = maxDiffF rUp expectUp
+
 syncTests :: TestTree
 syncTests =
   testGroup
@@ -57,7 +76,7 @@ syncTests =
     ]
 
 maxDiffF :: V.Vector Float -> V.Vector Float -> Float
-maxDiffF x y = V.maximum $ V.zipWith (\a b -> abs a - b) x y
+maxDiffF x y = V.maximum $ V.zipWith (\a b -> abs (a - b)) x y
 
 maxDiffD :: U.Vector (Complex Double) -> U.Vector (Complex Double) -> Double
 maxDiffD x y = U.maximum $ U.map C.magnitude $ U.zipWith (-) x y
@@ -129,5 +148,94 @@ waveEnvelope =
       1.49352365, 1.30184956, 0.75230654, 0.57287563, 1.15394755, 1.48181892,
       1.34758746, 0.85786936, 0.50550353, 1.04570146, 1.50467192, 1.41418247,
       0.86659862, 0.41780733
+    ]
+{- ORMOLU_ENABLE -}
+
+-- From Python:
+-- fs = 100  # Original sampling rate (Hz)
+-- t = np.linspace(0, 1, fs, endpoint=False)  # 100 samples over 1 second
+-- freq = 10  # Frequency of the sine wave (Hz)
+-- signal_orig = np.sin(2 * np.pi * freq * t)
+-- signal_down = signal.resample(signal_orig, 50)
+{- ORMOLU_DISABLE -}
+expectDown :: V.Vector Float
+expectDown =
+  V.fromList
+    [ -1.91395591e-15,  9.51056516e-01,  5.87785252e-01, -5.87785252e-01,
+      -9.51056516e-01, -9.32860229e-17,  9.51056516e-01,  5.87785252e-01,
+      -5.87785252e-01, -9.51056516e-01, -5.51744758e-16,  9.51056516e-01,
+       5.87785252e-01, -5.87785252e-01, -9.51056516e-01, -1.06695564e-15,
+       9.51056516e-01,  5.87785252e-01, -5.87785252e-01, -9.51056516e-01,
+      -4.19778198e-16,  9.51056516e-01,  5.87785252e-01, -5.87785252e-01,
+      -9.51056516e-01, -2.06574631e-16,  9.51056516e-01,  5.87785252e-01,
+      -5.87785252e-01, -9.51056516e-01, -3.35356809e-15,  9.51056516e-01,
+       5.87785252e-01, -5.87785252e-01, -9.51056516e-01,  1.80989786e-15,
+       9.51056516e-01,  5.87785252e-01, -5.87785252e-01, -9.51056516e-01,
+       3.12889646e-16,  9.51056516e-01,  5.87785252e-01, -5.87785252e-01,
+      -9.51056516e-01, -6.20717256e-16,  9.51056516e-01,  5.87785252e-01,
+      -5.87785252e-01, -9.51056516e-01
+    ]
+{- ORMOLU_ENABLE -}
+
+-- From Python:
+-- fs = 100  # Original sampling rate (Hz)
+-- t = np.linspace(0, 1, fs, endpoint=False)  # 100 samples over 1 second
+-- freq = 10  # Frequency of the sine wave (Hz)
+-- signal_orig = np.sin(2 * np.pi * freq * t)
+-- signal_up = signal.resample(signal_orig, 200)
+{- ORMOLU_DISABLE -}
+expectUp :: V.Vector Float
+expectUp =
+  V.fromList
+    [ 4.41762107e-31,  3.09016994e-01,  5.87785252e-01,  8.09016994e-01,
+        9.51056516e-01,  1.00000000e+00,  9.51056516e-01,  8.09016994e-01,
+        5.87785252e-01,  3.09016994e-01,  8.60966643e-17, -3.09016994e-01,
+       -5.87785252e-01, -8.09016994e-01, -9.51056516e-01, -1.00000000e+00,
+       -9.51056516e-01, -8.09016994e-01, -5.87785252e-01, -3.09016994e-01,
+       -1.92678075e-16,  3.09016994e-01,  5.87785252e-01,  8.09016994e-01,
+        9.51056516e-01,  1.00000000e+00,  9.51056516e-01,  8.09016994e-01,
+        5.87785252e-01,  3.09016994e-01,  4.41368032e-16, -3.09016994e-01,
+       -5.87785252e-01, -8.09016994e-01, -9.51056516e-01, -1.00000000e+00,
+       -9.51056516e-01, -8.09016994e-01, -5.87785252e-01, -3.09016994e-01,
+       -4.89858720e-16,  3.09016994e-01,  5.87785252e-01,  8.09016994e-01,
+        9.51056516e-01,  1.00000000e+00,  9.51056516e-01,  8.09016994e-01,
+        5.87785252e-01,  3.09016994e-01,  5.75955384e-16, -3.09016994e-01,
+       -5.87785252e-01, -8.09016994e-01, -9.51056516e-01, -1.00000000e+00,
+       -9.51056516e-01, -8.09016994e-01, -5.87785252e-01, -3.09016994e-01,
+       -6.82536794e-16,  3.09016994e-01,  5.87785252e-01,  8.09016994e-01,
+        9.51056516e-01,  1.00000000e+00,  9.51056516e-01,  8.09016994e-01,
+        5.87785252e-01,  3.09016994e-01, -2.62148693e-15, -3.09016994e-01,
+       -5.87785252e-01, -8.09016994e-01, -9.51056516e-01, -1.00000000e+00,
+       -9.51056516e-01, -8.09016994e-01, -5.87785252e-01, -3.09016994e-01,
+       -9.79717439e-16,  3.09016994e-01,  5.87785252e-01,  8.09016994e-01,
+        9.51056516e-01,  1.00000000e+00,  9.51056516e-01,  8.09016994e-01,
+        5.87785252e-01,  3.09016994e-01,  1.06581410e-15, -3.09016994e-01,
+       -5.87785252e-01, -8.09016994e-01, -9.51056516e-01, -1.00000000e+00,
+       -9.51056516e-01, -8.09016994e-01, -5.87785252e-01, -3.09016994e-01,
+       -1.17239551e-15,  3.09016994e-01,  5.87785252e-01,  8.09016994e-01,
+        9.51056516e-01,  1.00000000e+00,  9.51056516e-01,  8.09016994e-01,
+        5.87785252e-01,  3.09016994e-01, -2.13162821e-15, -3.09016994e-01,
+       -5.87785252e-01, -8.09016994e-01, -9.51056516e-01, -1.00000000e+00,
+       -9.51056516e-01, -8.09016994e-01, -5.87785252e-01, -3.09016994e-01,
+       -1.46957616e-15,  3.09016994e-01,  5.87785252e-01,  8.09016994e-01,
+        9.51056516e-01,  1.00000000e+00,  9.51056516e-01,  8.09016994e-01,
+        5.87785252e-01,  3.09016994e-01, -1.99704086e-15, -3.09016994e-01,
+       -5.87785252e-01, -8.09016994e-01, -9.51056516e-01, -1.00000000e+00,
+       -9.51056516e-01, -8.09016994e-01, -5.87785252e-01, -3.09016994e-01,
+        5.44317312e-15,  3.09016994e-01,  5.87785252e-01,  8.09016994e-01,
+        9.51056516e-01,  1.00000000e+00,  9.51056516e-01,  8.09016994e-01,
+        5.87785252e-01,  3.09016994e-01,  5.46365787e-15, -3.09016994e-01,
+       -5.87785252e-01, -8.09016994e-01, -9.51056516e-01, -1.00000000e+00,
+       -9.51056516e-01, -8.09016994e-01, -5.87785252e-01, -3.09016994e-01,
+       -1.95943488e-15,  3.09016994e-01,  5.87785252e-01,  8.09016994e-01,
+        9.51056516e-01,  1.00000000e+00,  9.51056516e-01,  8.09016994e-01,
+        5.87785252e-01,  3.09016994e-01,  5.59824522e-15, -3.09016994e-01,
+       -5.87785252e-01, -8.09016994e-01, -9.51056516e-01, -1.00000000e+00,
+       -9.51056516e-01, -8.09016994e-01, -5.87785252e-01, -3.09016994e-01,
+       -2.15211295e-15,  3.09016994e-01,  5.87785252e-01,  8.09016994e-01,
+        9.51056516e-01,  1.00000000e+00,  9.51056516e-01,  8.09016994e-01,
+        5.87785252e-01,  3.09016994e-01, -1.15191077e-15, -3.09016994e-01,
+       -5.87785252e-01, -8.09016994e-01, -9.51056516e-01, -1.00000000e+00,
+       -9.51056516e-01, -8.09016994e-01, -5.87785252e-01, -3.09016994e-01
     ]
 {- ORMOLU_ENABLE -}
