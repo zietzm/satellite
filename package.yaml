@@ -24,7 +24,6 @@ dependencies:
 - array >= 0.5.6 && < 0.6
 - dsp >= 0.2.5 && < 0.3
 - vector >= 0.13.1 && < 0.14
-- vector-fft >= 0.2.0 && < 0.3
 - vector-fftw >= 0.1.4 && < 0.2
 - wave >= 0.2.1 && < 0.3
 

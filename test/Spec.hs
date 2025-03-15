@@ -1,7 +1,7 @@
 import Data.Complex (Complex ((:+)))
 import qualified Data.Complex as C
+import Data.Vector.Storable (Vector)
 import qualified Data.Vector.Storable as V
-import qualified Data.Vector.Unboxed as U
 import GHC.Float (double2Float, float2Double, int2Float)
 import qualified Signals
 import qualified Sync
@@ -19,7 +19,7 @@ dspTests =
   testGroup
     "Signal processing"
     [ testCase "FFT expected length" $
-        U.length (Signals.fft wave) @?= V.length wave,
+        V.length (Signals.fft wave) @?= V.length wave,
       testCase "Envelope expected length" $
         V.length (Signals.getEnvelope wave) @?= V.length wave,
       testCase "FFT expected result" $
@@ -46,7 +46,7 @@ dspTests =
     maxDiffEnv = maxDiffF (Signals.getEnvelope wave) waveEnvelope
 
     -- Test the low pass filter
-    t = V.enumFromN 0 2000 :: V.Vector Float
+    t = V.enumFromN 0 2000 :: Vector Float
     xLow = V.map (sin . (* (2 * 5 * pi))) t
     xHigh = V.map (sin . (* (2 * 250 * pi))) t
     x = V.zipWith (+) xLow xHigh
@@ -56,7 +56,7 @@ dspTests =
     maxDiffFilt = maxDiffF (V.drop 10 filtered') (V.drop 10 xLow)
 
     -- Test Fourier resampling
-    t2 = V.generate 100 ((* 0.01) . int2Float) :: V.Vector Float
+    t2 = V.generate 100 ((* 0.01) . int2Float) :: Vector Float
     x2 = V.map (sin . (* (2 * pi * 10))) t2
     rDown = Signals.fourierResample 50 x2
     maxDiffDown = maxDiffF rDown expectDown
@@ -75,17 +75,17 @@ syncTests =
         Sync.adjustPattern 2 (V.fromList [1.0, 2.0]) @?= V.fromList [1.0, 1.0, 2.0, 2.0]
     ]
 
-maxDiffF :: V.Vector Float -> V.Vector Float -> Float
+maxDiffF :: Vector Float -> Vector Float -> Float
 maxDiffF x y = V.maximum $ V.zipWith (\a b -> abs (a - b)) x y
 
-maxDiffD :: U.Vector (Complex Double) -> U.Vector (Complex Double) -> Double
-maxDiffD x y = U.maximum $ U.map C.magnitude $ U.zipWith (-) x y
+maxDiffD :: Vector (Complex Double) -> Vector (Complex Double) -> Double
+maxDiffD x y = V.maximum $ V.map C.magnitude $ V.zipWith (-) x y
 
 -- Built in Python using:
 -- t = np.linspace(0, 1, 32)
 -- signal = np.sin(2 * np.pi * 5 * t) + 0.5 * np.sin(2 * np.pi * 20 * t)
 {- ORMOLU_DISABLE -}
-wave :: V.Vector Float
+wave :: Vector Float
 wave = V.fromList [
   0.00000000e+00,  4.53256389e-01,  1.38184310e+00, -9.60096056e-02,
   -1.03342672e+00, -4.43517970e-01, -5.63694914e-01,  6.74208626e-01,
@@ -99,9 +99,9 @@ wave = V.fromList [
 
 -- Built in Python using:
 -- np.fft.fft(signal)
-waveFft :: U.Vector (Complex Double)
+waveFft :: Vector (Complex Double)
 waveFft =
-  U.fromList
+  V.fromList
     [ negate 2.88657986e-15 :+ 0.0,
       1.56605153e-02 :+ negate 0.15900388,
       7.19912997e-02 :+ negate 0.3619247,
@@ -139,7 +139,7 @@ waveFft =
 -- Built in Python using:
 -- np.abs(scipy.signal.hilbert(signal))
 {- ORMOLU_DISABLE -}
-waveEnvelope :: V.Vector Float
+waveEnvelope :: Vector Float
 waveEnvelope =
   V.fromList
     [ 0.41780733, 0.86659862, 1.41418247, 1.50467192, 1.04570146, 0.50550353,
@@ -158,7 +158,7 @@ waveEnvelope =
 -- signal_orig = np.sin(2 * np.pi * freq * t)
 -- signal_down = signal.resample(signal_orig, 50)
 {- ORMOLU_DISABLE -}
-expectDown :: V.Vector Float
+expectDown :: Vector Float
 expectDown =
   V.fromList
     [ -1.91395591e-15,  9.51056516e-01,  5.87785252e-01, -5.87785252e-01,
@@ -184,7 +184,7 @@ expectDown =
 -- signal_orig = np.sin(2 * np.pi * freq * t)
 -- signal_up = signal.resample(signal_orig, 200)
 {- ORMOLU_DISABLE -}
-expectUp :: V.Vector Float
+expectUp :: Vector Float
 expectUp =
   V.fromList
     [ 4.41762107e-31,  3.09016994e-01,  5.87785252e-01,  8.09016994e-01,
