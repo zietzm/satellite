@@ -72,8 +72,19 @@ syncTests =
       testCase "Self-convolve = length for syncB" $
         Sync.crossCorr Sync.syncB Sync.syncB @?= V.fromList [40.0],
       testCase "Adjust pattern 2 [1,2] -> [1,1,2,2]" $
-        Sync.adjustPattern 2 (V.fromList [1.0, 2.0]) @?= V.fromList [1.0, 1.0, 2.0, 2.0]
+        Sync.adjustPattern 2 (V.fromList [1.0, 2.0]) @?= V.fromList [1.0, 1.0, 2.0, 2.0],
+      testCase "Find basic peaks" $ basicPeaks @?= V.fromList [1, 3, 5],
+      testCase "Peak heights" $ peakHeights @?= V.fromList [2, 5, 9],
+      testCase "Prioritize highest" $ filteredPeaks @?= V.fromList [1, 3, 5],
+      testCase "Find peaks" $ peaks @?= V.fromList [1, 3, 5]
     ]
+  where
+    -- Test peak finding
+    heights = V.fromList [1, 2, 1, 5, 1, 9, 1] :: Vector Int
+    basicPeaks = Sync.findBasicPeaks 0 heights
+    peakHeights = V.map (heights V.!) basicPeaks
+    filteredPeaks = Sync.prioritizeHighest 2 peakHeights basicPeaks
+    peaks = Sync.findPeaks 0 2 heights
 
 maxDiffF :: Vector Float -> Vector Float -> Float
 maxDiffF x y = V.maximum $ V.zipWith (\a b -> abs (a - b)) x y

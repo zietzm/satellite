@@ -3,9 +3,13 @@ module Sync
     syncB,
     adjustPattern,
     crossCorr,
+    findPeaks,
+    findBasicPeaks,
+    prioritizeHighest,
   )
 where
 
+import Data.List (sortBy)
 import Data.Vector.Storable (Storable, Vector)
 import qualified Data.Vector.Storable as V
 
@@ -61,3 +65,39 @@ crossCorr fs xs = V.generate n getElem
     n2 = V.length xs
     n = max n1 n2 - min n1 n2 + 1
     getElem i = V.sum $ V.zipWith (*) fs (V.drop i xs)
+
+-- | @findPeaks@ finds peaks in a 1d signal that are at least height tall and
+-- distance from another peak. Mimics scipy.signal.find_peaks (with fewer options)
+findPeaks :: (Ord a, Storable a) => a -> Int -> Vector a -> Vector Int
+findPeaks height distance xs = peaks
+  where
+    basicPeaks = findBasicPeaks height xs
+    peakHeights = V.map (xs V.!) basicPeaks
+    peaks = prioritizeHighest distance peakHeights basicPeaks
+
+-- | Find indices that are higher than height and both adjacent neighbors
+findBasicPeaks :: (Ord a, Storable a) => a -> Vector a -> Vector Int
+findBasicPeaks height xs = V.filter (> 0) $ V.izipWith3 isPeak xs (V.drop 1 xs) (V.drop 2 xs)
+  where
+    isPeak i p c n
+      | c >= height && p < c && n < c = i + 1
+      | otherwise = 0 -- Zero indicates no peak (above is never zero)
+
+-- | Filter peaks down to those which are a minimum distance apart. Prioritize
+-- keeping higher peaks.
+prioritizeHighest :: (Ord a, Storable a) => Int -> Vector a -> Vector Int -> Vector Int
+prioritizeHighest distance heights peaks = V.fromList filtered
+  where
+    peakHeights = zip (V.toList peaks) (V.toList heights)
+    sortedPairs = sortBy (\(_, h1) (_, h2) -> compare h2 h1) peakHeights
+    sortedPeaks = map fst sortedPairs
+
+    filterPeaks :: [Int] -> [Int] -> [Int]
+    filterPeaks [] _ = []
+    filterPeaks (p : ps) kept =
+      let tooClose = [i | i <- kept, abs (p - i) < distance]
+       in if null tooClose
+            then p : filterPeaks ps (p : kept)
+            else filterPeaks ps kept
+
+    filtered = reverse $ filterPeaks sortedPeaks []
