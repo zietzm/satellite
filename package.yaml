@@ -26,6 +26,7 @@ dependencies:
 - vector >= 0.13.1 && < 0.14
 - vector-fftw >= 0.1.4 && < 0.2
 - wave >= 0.2.1 && < 0.3
+- vector-algorithms >= 0.9.0 && < 0.10
 
 ghc-options:
 - -Wall

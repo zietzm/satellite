@@ -3,6 +3,7 @@ import qualified Data.Complex as C
 import Data.Vector.Storable (Vector)
 import qualified Data.Vector.Storable as V
 import GHC.Float (double2Float, float2Double, int2Float)
+import qualified Norm
 import qualified Signals
 import qualified Sync
 import Test.Tasty
@@ -12,7 +13,7 @@ main :: IO ()
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Tests" [dspTests, syncTests]
+tests = testGroup "Tests" [dspTests, syncTests, normTests]
 
 dspTests :: TestTree
 dspTests =
@@ -22,14 +23,14 @@ dspTests =
         V.length (Signals.fft wave) @?= V.length wave,
       testCase "Envelope expected length" $
         V.length (Signals.getEnvelope wave) @?= V.length wave,
-      testCase "FFT expected result" $ do
+      testCase "FFT expected result" $
         let maxDiffFft = maxDiffD (Signals.fft wave) waveFft
-        assertBool ("FFT differed from Python: " ++ show maxDiffFft) (maxDiffFft < 1e-6),
-      testCase "Wave envelope" $ do
+         in assertBool ("FFT differed from Python: " ++ show maxDiffFft) (maxDiffFft < 1e-6),
+      testCase "Wave envelope" $
         let maxDiffEnv = maxDiffF (Signals.getEnvelope wave) waveEnvelope
-        assertBool ("Envelope differed from Python: " ++ show maxDiffEnv) (maxDiffEnv < 1e-6),
+         in assertBool ("Envelope differed from Python: " ++ show maxDiffEnv) (maxDiffEnv < 1e-6),
       -- TODO: We could make this more accurate in the future. For now, it works.
-      testCase "Low pass filter" $ do
+      testCase "Low pass filter" $
         let t = V.enumFromN 0 2000 :: Vector Float
             xLow = V.map (sin . (* (2 * 5 * pi))) t
             xHigh = V.map (sin . (* (2 * 250 * pi))) t
@@ -38,7 +39,7 @@ dspTests =
             filtered = Signals.lowpass 2000.0 0.125 xL
             filtered' = V.fromList $ map double2Float filtered
             maxDiffFilt = maxDiffF (V.drop 10 filtered') (V.drop 10 xLow)
-        assertBool ("Filter error" ++ show maxDiffFilt) (maxDiffFilt < 5e-3),
+         in assertBool ("Filter error" ++ show maxDiffFilt) (maxDiffFilt < 5e-3),
       testCase "Downsampling length" $
         V.length rDown @?= V.length expectDown,
       testCase "Upsampling length" $
@@ -50,22 +51,22 @@ dspTests =
       testCase
         "Upampling result"
         $ assertBool ("Upsampling error" ++ show maxDiffUp) (maxDiffUp < 1e-5),
-      testCase "Interpolation" $ do
+      testCase "Interpolation" $
         let xOld = V.fromList [1.0, 3.0, 5.0] :: V.Vector Float
             yOld = V.fromList [1.0, 9.0, 25.0]
             xNew = V.fromList [2.0, 4.0]
             result = Signals.interp xOld yOld xNew
             expected = V.fromList [5.0, 17.0]
             maxDiff = V.maximum $ V.map abs $ V.zipWith (-) result expected
-        assertBool ("Interpolation error: " ++ show maxDiff) (maxDiff < 1e-6),
-      testCase "Interpolation outside range" $ do
+         in assertBool ("Interpolation error: " ++ show maxDiff) (maxDiff < 1e-6),
+      testCase "Interpolation outside range" $
         let xOld = V.fromList [1.0, 3.0, 5.0] :: V.Vector Float
             yOld = V.fromList [1.0, 9.0, 25.0]
             xNew = V.fromList [0.0, 6.0]
             result = Signals.interp xOld yOld xNew
             expected = V.fromList [1.0, 25.0]
             maxDiff = V.maximum $ V.map abs $ V.zipWith (-) result expected
-        assertBool ("Interpolation error: " ++ show maxDiff) (maxDiff < 1e-6)
+         in assertBool ("Interpolation error: " ++ show maxDiff) (maxDiff < 1e-6)
     ]
   where
     -- Test Fourier resampling
@@ -100,6 +101,43 @@ syncTests =
     peakHeights = V.map (heights V.!) basicPeaks
     filteredPeaks = Sync.prioritizeHighest 2 peakHeights basicPeaks
     peaks = Sync.findPeaks 0 2 heights
+
+normTests :: TestTree
+normTests =
+  testGroup
+    "Normalization"
+    [ testCase "sortStorableVector sorts correctly" $
+        let unsorted = V.fromList [3.0, 1.0, 4.0, 1.5, 9.0] :: Vector Float
+            expected = V.fromList [1.0, 1.5, 3.0, 4.0, 9.0]
+         in Norm.sortStorableVector unsorted @?= expected,
+      testCase "percentile computes 25th and 75th percentiles" $
+        let input = V.fromList [1.0, 2.0, 3.0, 4.0, 5.0]
+            result = Norm.percentile [25.0, 75.0] input
+            expected = [2.0, 4.0] -- Approximate, assuming linear interpolation
+         in assertApproxEqual "Percentiles" 1e-5 result expected,
+      testCase "small range percentiles" $
+        let input = V.fromList [1.0, 1.1, 1.2, 1.3, 1.4]
+            result = Norm.percentile [20.0, 80.0] input
+            expected = [1.08, 1.32]
+         in assertApproxEqual "Percentiles" 1e-5 result expected,
+      testCase "rangeNorm clamps and normalizes between 0 and 1" $
+        let input = V.fromList [1.0, 2.0, 3.0, 4.0, 5.0]
+            result = Norm.rangeNorm 25.0 75.0 input
+            expected = V.fromList [0.0, 0.0, 0.5, 1.0, 1.0] -- Based on 25th=2, 75th=4
+         in assertApproxEqual "Normalized values" 1e-5 (V.toList result) (V.toList expected),
+      testCase "rangeNorm handles edge case with small range" $
+        let input = V.fromList [1.0, 1.1, 1.2, 1.3, 1.4]
+            result = Norm.rangeNorm 20.0 80.0 input
+            expected = V.fromList [0.0, 1 / 12, 1 / 2, 11 / 12, 1] -- Approx, small range
+         in assertApproxEqual "Small range normalization" 1e-5 (V.toList result) (V.toList expected)
+    ]
+
+-- Helper function for approximate equality due to floating-point imprecision
+assertApproxEqual :: String -> Double -> [Double] -> [Double] -> Assertion
+assertApproxEqual msg eps actual expected =
+  let pairs = zip actual expected
+      diffs = map (\(a, e) -> abs (a - e) <= eps) pairs
+   in assertBool (msg ++ ": " ++ show actual ++ " not approx equal to " ++ show expected) (and diffs)
 
 maxDiffF :: Vector Float -> Vector Float -> Float
 maxDiffF x y = V.maximum $ V.zipWith (\a b -> abs (a - b)) x y
