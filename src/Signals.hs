@@ -11,7 +11,7 @@ where
 import DSP.Filter.IIR.Cookbook (lpf)
 import Data.Complex (Complex ((:+)))
 import qualified Data.Complex as C
-import Data.Vector.Storable (Storable, Vector, (!))
+import Data.Vector.Storable (Storable, Vector)
 import qualified Data.Vector.Storable as V
 import GHC.Float (double2Float, float2Double)
 import qualified Numeric.FFT.Vector.Invertible as FFTW
@@ -88,9 +88,11 @@ interp xOld yOld xNew
       | newP >= nNew = reverse ys
       | x <= V.head xOld = go (newP + 1) oldP (V.head yOld : ys)
       | x >= V.last xOld = go (newP + 1) oldP (V.last yOld : ys)
-      | xOld ! oldP <= x && x <= xOld ! (oldP + 1) = go (newP + 1) oldP (yNew : ys)
+      | xOld V.! oldP <= x && x <= xOld V.! (oldP + 1) = go (newP + 1) oldP (yNew : ys)
       | otherwise = go newP (oldP + 1) ys
       where
-        x = xNew ! newP
-        slope = ((yOld ! (oldP + 1)) - (yOld ! oldP)) / ((xOld ! (oldP + 1)) - (xOld ! oldP))
-        yNew = (yOld ! oldP) + (x - (xOld ! oldP)) * slope
+        x = xNew V.! newP
+        slope =
+          ((yOld V.! (oldP + 1)) - (yOld V.! oldP))
+            / ((xOld V.! (oldP + 1)) - (xOld V.! oldP))
+        yNew = (yOld V.! oldP) + (x - (xOld V.! oldP)) * slope
