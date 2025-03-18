@@ -1,7 +1,7 @@
 module Sync
   ( syncA,
     syncB,
-    adjustPattern,
+    upsamplePattern,
     crossCorr,
     findPeaks,
     findBasicPeaks,
@@ -54,8 +54,8 @@ syncB = V.fromList [
 
 -- | @adjustPattern@ increase the size of a pattern by repeating elements
 -- e.g. adjustPattern 2 (a,b) -> (a,a,b,b)
-adjustPattern :: Int -> Vector Float -> Vector Float
-adjustPattern upFactor = V.concatMap (V.replicate upFactor)
+upsamplePattern :: Int -> Vector Float -> Vector Float
+upsamplePattern upFactor = V.concatMap (V.replicate upFactor)
 
 -- | @crossCorr@ computes the cross-correlation between two vectors
 crossCorr :: (Num a, Storable a) => Vector a -> Vector a -> Vector a

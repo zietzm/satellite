@@ -85,7 +85,9 @@ syncTests =
       testCase "Self-convolve = length for syncB" $
         Sync.crossCorr Sync.syncB Sync.syncB @?= V.fromList [40.0],
       testCase "Adjust pattern 2 [1,2] -> [1,1,2,2]" $
-        Sync.adjustPattern 2 (V.fromList [1.0, 2.0]) @?= V.fromList [1.0, 1.0, 2.0, 2.0],
+        let raw = V.fromList [1.0, 2.0]
+            expected = V.fromList [1.0, 1.0, 2.0, 2.0]
+         in Sync.upsamplePattern 2 raw @?= expected,
       testCase "Find basic peaks" $ basicPeaks @?= V.fromList [1, 3, 5],
       testCase "Peak heights" $ peakHeights @?= V.fromList [2, 5, 9],
       testCase "Prioritize highest" $ filteredPeaks @?= V.fromList [1, 3, 5],
