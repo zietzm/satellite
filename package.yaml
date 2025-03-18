@@ -27,6 +27,9 @@ dependencies:
 - vector-fftw >= 0.1.4 && < 0.2
 - wave >= 0.2.1 && < 0.3
 - vector-algorithms >= 0.9.0 && < 0.10
+- bytestring
+- JuicyPixels
+- cereal
 
 ghc-options:
 - -Wall

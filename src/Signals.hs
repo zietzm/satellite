@@ -51,7 +51,7 @@ getEnvelope signal = envelope
     envelope = ifftMagnitude analyticFreq
 
 -- | Apply a low pass filter to data with a given sampling and cutoff frequency
-lowpass :: Double -> Double -> [Double] -> [Double]
+lowpass :: (Floating a) => a -> a -> [a] -> [a]
 lowpass fs fc signal = reverse $ lpf bw w $ reverse $ lpf bw w signal
   where
     w = 2 * pi * fc / fs -- Normalized angular frequency

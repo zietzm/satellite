@@ -20,10 +20,11 @@ maxNorm xs = V.map (/ maxAbs) xs
     maxAbs = V.maximum $ V.map abs xs
 
 -- | Normalize to have zero mean
-meanNorm :: (Num a, Storable a) => Vector a -> Vector a
+meanNorm :: (Fractional a, Storable a) => Vector a -> Vector a
 meanNorm xs = V.map (subtract meanVal) xs
   where
-    meanVal = V.sum xs
+    n = fromIntegral $ V.length xs
+    meanVal = V.sum xs / n
 
 -- | Clamp values between percentiles and set the range to 0 - 1
 rangeNorm :: (Fractional a, Ord a, Storable a) => a -> a -> Vector a -> Vector a

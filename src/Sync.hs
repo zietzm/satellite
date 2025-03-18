@@ -6,10 +6,12 @@ module Sync
     findPeaks,
     findBasicPeaks,
     prioritizeHighest,
+    alignPeaks,
+    getSampleCoords,
   )
 where
 
-import Data.List (sortBy)
+import Data.List (sort, sortBy)
 import Data.Vector.Storable (Storable, Vector)
 import qualified Data.Vector.Storable as V
 
@@ -100,4 +102,28 @@ prioritizeHighest distance heights peaks = V.fromList filtered
             then p : filterPeaks ps (p : kept)
             else filterPeaks ps kept
 
-    filtered = reverse $ filterPeaks sortedPeaks []
+    filtered = sort $ filterPeaks sortedPeaks []
+
+-- | @alignPeaks@ ensure that A peaks precede B peaks
+alignPeaks :: (Ord a, Storable a) => Vector a -> Vector a -> (Vector a, Vector a)
+alignPeaks a b
+  | V.null a || V.null b = (a, b)
+  | V.head a >= V.head b = alignPeaks a (V.drop 1 b)
+  | otherwise = (a, b)
+
+getSampleCoords :: Int -> Int -> Vector Int -> Vector Int -> Vector Float
+getSampleCoords rawNPerLine nPerLine a b = go a b V.empty
+  where
+    nPerSide = nPerLine `div` 2
+    step = fromIntegral rawNPerLine / fromIntegral nPerLine :: Float
+
+    go x y acc
+      | V.null x || V.null y = acc
+      | otherwise = go x' y' (V.concat [acc, newValsX, newValsY])
+      where
+        xPeak = fromIntegral $ V.head x :: Float
+        yPeak = fromIntegral $ V.head y :: Float
+        newValsX = V.generate nPerSide (\i -> xPeak + fromIntegral i * step)
+        newValsY = V.generate nPerSide (\i -> yPeak + fromIntegral i * step)
+        x' = V.drop 1 x
+        y' = V.drop 1 y
