@@ -22,12 +22,22 @@ dspTests =
         V.length (Signals.fft wave) @?= V.length wave,
       testCase "Envelope expected length" $
         V.length (Signals.getEnvelope wave) @?= V.length wave,
-      testCase "FFT expected result" $
+      testCase "FFT expected result" $ do
+        let maxDiffFft = maxDiffD (Signals.fft wave) waveFft
         assertBool ("FFT differed from Python: " ++ show maxDiffFft) (maxDiffFft < 1e-6),
-      testCase "Wave envelope" $
+      testCase "Wave envelope" $ do
+        let maxDiffEnv = maxDiffF (Signals.getEnvelope wave) waveEnvelope
         assertBool ("Envelope differed from Python: " ++ show maxDiffEnv) (maxDiffEnv < 1e-6),
       -- TODO: We could make this more accurate in the future. For now, it works.
-      testCase "Low pass filter" $
+      testCase "Low pass filter" $ do
+        let t = V.enumFromN 0 2000 :: Vector Float
+            xLow = V.map (sin . (* (2 * 5 * pi))) t
+            xHigh = V.map (sin . (* (2 * 250 * pi))) t
+            x = V.zipWith (+) xLow xHigh
+            xL = map float2Double $ V.toList x
+            filtered = Signals.lowpass 2000.0 0.125 xL
+            filtered' = V.fromList $ map double2Float filtered
+            maxDiffFilt = maxDiffF (V.drop 10 filtered') (V.drop 10 xLow)
         assertBool ("Filter error" ++ show maxDiffFilt) (maxDiffFilt < 5e-3),
       testCase "Downsampling length" $
         V.length rDown @?= V.length expectDown,
@@ -58,19 +68,6 @@ dspTests =
         assertBool ("Interpolation error: " ++ show maxDiff) (maxDiff < 1e-6)
     ]
   where
-    maxDiffFft = maxDiffD (Signals.fft wave) waveFft
-    maxDiffEnv = maxDiffF (Signals.getEnvelope wave) waveEnvelope
-
-    -- Test the low pass filter
-    t = V.enumFromN 0 2000 :: Vector Float
-    xLow = V.map (sin . (* (2 * 5 * pi))) t
-    xHigh = V.map (sin . (* (2 * 250 * pi))) t
-    x = V.zipWith (+) xLow xHigh
-    xL = map float2Double $ V.toList x
-    filtered = Signals.lowpass 2000.0 0.125 xL
-    filtered' = V.fromList $ map double2Float filtered
-    maxDiffFilt = maxDiffF (V.drop 10 filtered') (V.drop 10 xLow)
-
     -- Test Fourier resampling
     t2 = V.generate 100 ((* 0.01) . int2Float) :: Vector Float
     x2 = V.map (sin . (* (2 * pi * 10))) t2
