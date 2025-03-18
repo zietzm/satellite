@@ -39,7 +39,23 @@ dspTests =
           (maxDiffDown < 1e-5),
       testCase
         "Upampling result"
-        $ assertBool ("Upsampling error" ++ show maxDiffUp) (maxDiffUp < 1e-5)
+        $ assertBool ("Upsampling error" ++ show maxDiffUp) (maxDiffUp < 1e-5),
+      testCase "Interpolation" $ do
+        let xOld = V.fromList [1.0, 3.0, 5.0] :: V.Vector Float
+            yOld = V.fromList [1.0, 9.0, 25.0]
+            xNew = V.fromList [2.0, 4.0]
+            result = Signals.interp xOld yOld xNew
+            expected = V.fromList [5.0, 17.0]
+            maxDiff = V.maximum $ V.map abs $ V.zipWith (-) result expected
+        assertBool ("Interpolation error: " ++ show maxDiff) (maxDiff < 1e-6),
+      testCase "Interpolation outside range" $ do
+        let xOld = V.fromList [1.0, 3.0, 5.0] :: V.Vector Float
+            yOld = V.fromList [1.0, 9.0, 25.0]
+            xNew = V.fromList [0.0, 6.0]
+            result = Signals.interp xOld yOld xNew
+            expected = V.fromList [1.0, 25.0]
+            maxDiff = V.maximum $ V.map abs $ V.zipWith (-) result expected
+        assertBool ("Interpolation error: " ++ show maxDiff) (maxDiff < 1e-6)
     ]
   where
     maxDiffFft = maxDiffD (Signals.fft wave) waveFft
