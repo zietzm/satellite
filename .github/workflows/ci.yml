@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Check out the repository code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Install Nix
+      - name: Install Nix
+        uses: cachix/install-nix-action@v22
+        with:
+          nix_path: nixpkgs=channel:nixpkgs-unstable # Use the unstable channel for latest packages
+          extra_nix_config: |
+            experimental-features = nix-command flakes # Enable flakes support
+
+      # Cache Nix store to speed up builds
+      - name: Cache Nix store
+        uses: actions/cache@v3
+        with:
+          path: /nix/store
+          key: ${{ runner.os }}-nix-${{ hashFiles('flake.nix', 'flake.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-nix-
+
+      # Enter the Nix development environment and run stack test
+      - name: Build and test with Nix and Stack
+        run: |
+          nix develop --command bash -c "stack test"
