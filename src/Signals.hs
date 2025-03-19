@@ -2,7 +2,8 @@ module Signals
   ( getEnvelope,
     fft,
     ifftMagnitude,
-    lowpass,
+    filtFilt,
+    lowpassVec,
     fourierResample,
     interp,
   )
@@ -51,11 +52,13 @@ getEnvelope signal = envelope
     envelope = ifftMagnitude analyticFreq
 
 -- | Apply a low pass filter to data with a given sampling and cutoff frequency
-lowpass :: (Floating a) => a -> a -> [a] -> [a]
-lowpass fs fc signal = reverse $ lpf bw w $ reverse $ lpf bw w signal
+filtFilt :: (Floating a) => a -> a -> a -> [a] -> [a]
+filtFilt bw fs fc = reverse . lpf bw w . reverse . lpf bw w
   where
     w = 2 * pi * fc / fs -- Normalized angular frequency
-    bw = 0.707
+
+lowpassVec :: (Floating a, Storable a) => a -> a -> a -> Vector a -> Vector a
+lowpassVec bw fs fc = V.fromList . filtFilt bw fs fc . V.toList
 
 fourierResample :: Int -> Vector Float -> Vector Float
 fourierResample nNew xs = result

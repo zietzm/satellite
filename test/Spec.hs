@@ -36,7 +36,7 @@ dspTests =
             xHigh = V.map (sin . (* (2 * 250 * pi))) t
             x = V.zipWith (+) xLow xHigh
             xL = map float2Double $ V.toList x
-            filtered = Signals.lowpass 2000.0 0.125 xL
+            filtered = Signals.filtFilt 2000.0 0.125 xL
             filtered' = V.fromList $ map double2Float filtered
             maxDiffFilt = maxDiffF (V.drop 10 filtered') (V.drop 10 xLow)
          in assertBool ("Filter error" ++ show maxDiffFilt) (maxDiffFilt < 5e-3),
