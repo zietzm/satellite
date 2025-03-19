@@ -27,7 +27,7 @@ linesPerSecond = 2
 
 {- ORMOLU_DISABLE -}
 -- | @syncA@ the A synchronization pattern for NOAA APT images
-syncA :: Vector Float
+syncA :: (Num a, Storable a) => Vector a
 syncA = V.fromList [
        -1, -1, -1, -1,
        1, 1, -1, -1,  -- Pulse 1
@@ -42,7 +42,7 @@ syncA = V.fromList [
    ]
 
 -- | @syncB@ the B synchronization pattern for NOAA APT images
-syncB :: Vector Float
+syncB :: (Num a, Storable a) => Vector a
 syncB = V.fromList [
        -1, -1, -1, -1,
        1, 1, 1, -1, -1,  -- Pulse 1
@@ -58,7 +58,7 @@ syncB = V.fromList [
 
 -- | @adjustPattern@ increase the size of a pattern by repeating elements
 -- e.g. adjustPattern 2 (a,b) -> (a,a,b,b)
-upsamplePattern :: Int -> Vector Float -> Vector Float
+upsamplePattern :: (Storable a) => Int -> Vector a -> Vector a
 upsamplePattern upFactor = V.concatMap (V.replicate upFactor)
 
 -- | @crossCorr@ computes the cross-correlation between two vectors
