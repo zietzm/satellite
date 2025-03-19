@@ -45,17 +45,21 @@ type Sample = Float
 readWAV :: (MonadIO m) => FilePath -> m (WAVInfo, V.Vector Sample)
 readWAV path = liftIO $ do
   wave <- W.readWaveFile path
+  let offset = fromIntegral $ W.waveDataOffset wave
+      size = fromIntegral $ W.waveDataSize wave
+  audioBytes <- withFile path ReadMode $ \handle -> do
+    hSeek handle AbsoluteSeek offset
+    BS.hGet handle size
   case W.waveSampleFormat wave of
     W.SampleFormatIeeeFloat32Bit -> do
-      let offset = fromIntegral $ W.waveDataOffset wave
-          size = fromIntegral $ W.waveDataSize wave
-      audioBytes <- withFile path ReadMode $ \handle -> do
-        hSeek handle AbsoluteSeek offset
-        BS.hGet handle size
       case decodeFloat32Samples audioBytes of
         Left err -> error $ "Failed to decode samples: " ++ err
         Right samples -> pure (toWAVInfo wave, samples)
-    _ -> error "WAV file must be 32-bit float format"
+    (W.SampleFormatPcmInt _) -> do
+      case decodePcmInt16Samples audioBytes of
+        Left err -> error $ "Failed to decode samples: " ++ err
+        Right samples -> pure (toWAVInfo wave, samples)
+    fmt -> error $ "WAV file must be 32-bit float format, but found: " ++ show fmt
 
 -- | Convert Wave metadata to WAVInfo
 toWAVInfo :: W.Wave -> WAVInfo
@@ -68,10 +72,22 @@ toWAVInfo wave =
     }
 
 -- | Decode ByteString into a Vector of Float samples
-decodeFloat32Samples :: BS.ByteString -> Either String (V.Vector Float)
+decodeFloat32Samples :: BS.ByteString -> Either String (V.Vector Sample)
 decodeFloat32Samples bs = S.runGet (V.replicateM nSamp S.getFloat32le) bs
   where
     nSamp = BS.length bs `div` 4 -- 4 bytes per Float32
+
+-- | Decode 16-bit PCM samples and convert to Float
+decodePcmInt16Samples :: BS.ByteString -> Either String (V.Vector Sample)
+decodePcmInt16Samples bs = word16Vec
+  where
+    nSamp = BS.length bs `div` 2 -- 2 bytes per Int16
+    word16Vec = S.runGet (V.replicateM nSamp getInt16AsFloat) bs
+
+getInt16AsFloat :: S.Get Float
+getInt16AsFloat = do
+  w16 <- S.getInt16le -- Read a 16-bit unsigned integer (little-endian)
+  return (fromIntegral w16 :: Float)
 
 -- | Calculate duration in seconds
 duration :: WAVInfo -> V.Vector Sample -> Float
