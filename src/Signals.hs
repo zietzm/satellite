@@ -89,7 +89,7 @@ interpCoords yOld xNew
     nOld = fromIntegral $ V.length yOld
     getNearest x
       | x <= 0.0 = V.head yOld
-      | x >= nOld = V.last yOld
+      | x >= nOld - 1 = V.last yOld
       | otherwise = y0 + (x - x0) * slope
       where
         x0 = fromIntegral (floor x :: Int)
