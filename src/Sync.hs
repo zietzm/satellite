@@ -8,6 +8,8 @@ module Sync
     prioritizeHighest,
     alignPeaks,
     getSampleCoords,
+    linesPerSecond,
+    wordsPerLine,
   )
 where
 
@@ -16,11 +18,11 @@ import Data.Vector.Storable (Storable, Vector)
 import qualified Data.Vector.Storable as V
 
 -- | @wordsPerLine@ the number of words per line in the NOAA APT format
-wordsPerLine :: Int
+wordsPerLine :: Float
 wordsPerLine = 2080
 
 -- | @linesPerSecond@ the number of lines per second in the NOAA APT format
-linesPerSecond :: Int
+linesPerSecond :: Float
 linesPerSecond = 2
 
 {- ORMOLU_DISABLE -}
