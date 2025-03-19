@@ -27,7 +27,7 @@ meanNorm xs = V.map (subtract meanVal) xs
     meanVal = V.sum xs / n
 
 -- | Clamp values between percentiles and set the range to 0 - 1
-rangeNorm :: (Fractional a, Ord a, Storable a) => a -> a -> Vector a -> Vector a
+rangeNorm :: (RealFrac a, Storable a) => a -> a -> Vector a -> Vector a
 rangeNorm lowPct highPct xs = V.map adjustVal xs
   where
     percentiles = percentile [lowPct, highPct] xs
@@ -40,16 +40,15 @@ rangeNorm lowPct highPct xs = V.map adjustVal xs
       | otherwise = (x - lowVal) / valRange
 
 -- | Compute percentiles of a vector
-percentile :: (Fractional a, Ord a, Storable a) => [a] -> Vector a -> [a]
+percentile :: (RealFrac a, Storable a) => [a] -> Vector a -> [a]
 percentile ps xs = V.toList newY
   where
     n = V.length xs
     nF = (fromRational . toRational) n
     psIx = map (\x -> (x / 100.0) * (nF - 1)) ps
     xNew = V.fromList psIx
-    xOld = V.enumFromN 0 n
     yOld = sortStorableVector xs
-    newY = Signals.interp xOld yOld xNew
+    newY = Signals.interpCoords yOld xNew
 
 -- | Sort a vector
 sortStorableVector :: (Ord a, Storable a) => Vector a -> Vector a

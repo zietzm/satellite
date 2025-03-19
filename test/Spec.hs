@@ -51,22 +51,12 @@ dspTests =
       testCase
         "Upampling result"
         $ assertBool ("Upsampling error" ++ show maxDiffUp) (maxDiffUp < 1e-5),
-      testCase "Interpolation" $
-        let xOld = V.fromList [1.0, 3.0, 5.0] :: V.Vector Float
-            yOld = V.fromList [1.0, 9.0, 25.0]
-            xNew = V.fromList [2.0, 4.0]
-            result = Signals.interp xOld yOld xNew
-            expected = V.fromList [5.0, 17.0]
-            maxDiff = V.maximum $ V.map abs $ V.zipWith (-) result expected
-         in assertBool ("Interpolation error: " ++ show maxDiff) (maxDiff < 1e-6),
-      testCase "Interpolation outside range" $
-        let xOld = V.fromList [1.0, 3.0, 5.0] :: V.Vector Float
-            yOld = V.fromList [1.0, 9.0, 25.0]
-            xNew = V.fromList [0.0, 6.0]
-            result = Signals.interp xOld yOld xNew
-            expected = V.fromList [1.0, 25.0]
-            maxDiff = V.maximum $ V.map abs $ V.zipWith (-) result expected
-         in assertBool ("Interpolation error: " ++ show maxDiff) (maxDiff < 1e-6)
+      testCase "interpolate coordinates" $
+        let input = V.fromList [0.0, 1.0, 2.0, 3.0, 4, 0, 5.0] :: Vector Float
+            xNew = V.fromList [0.5, 1.0, 1.5] :: Vector Float
+            result = Signals.interpCoords input xNew
+            expected = V.fromList [0.5, 1.0, 1.5]
+         in result @?= expected
     ]
   where
     -- Test Fourier resampling
@@ -82,12 +72,12 @@ syncTests =
   testGroup
     "Synchronization"
     [ testCase "Self-convolve = length for syncA" $
-        Sync.crossCorr Sync.syncA Sync.syncA @?= V.fromList [40.0],
+        Sync.crossCorr Sync.syncA Sync.syncA @?= (V.fromList [40.0] :: V.Vector Float),
       testCase "Self-convolve = length for syncB" $
-        Sync.crossCorr Sync.syncB Sync.syncB @?= V.fromList [40.0],
+        Sync.crossCorr Sync.syncB Sync.syncB @?= (V.fromList [40.0] :: V.Vector Float),
       testCase "Adjust pattern 2 [1,2] -> [1,1,2,2]" $
-        let raw = V.fromList [1.0, 2.0]
-            expected = V.fromList [1.0, 1.0, 2.0, 2.0]
+        let raw = V.fromList [1.0, 2.0] :: V.Vector Float
+            expected = V.fromList [1.0, 1.0, 2.0, 2.0] :: V.Vector Float
          in Sync.upsamplePattern 2 raw @?= expected,
       testCase "Find basic peaks" $ basicPeaks @?= V.fromList [1, 3, 5],
       testCase "Peak heights" $ peakHeights @?= V.fromList [2, 5, 9],
@@ -108,32 +98,32 @@ normTests =
     "Normalization"
     [ testCase "sortStorableVector sorts correctly" $
         let unsorted = V.fromList [3.0, 1.0, 4.0, 1.5, 9.0] :: Vector Float
-            expected = V.fromList [1.0, 1.5, 3.0, 4.0, 9.0]
+            expected = V.fromList [1.0, 1.5, 3.0, 4.0, 9.0] :: Vector Float
          in Norm.sortStorableVector unsorted @?= expected,
       testCase "percentile computes 25th and 75th percentiles" $
-        let input = V.fromList [1.0, 2.0, 3.0, 4.0, 5.0]
-            result = Norm.percentile [25.0, 75.0] input
-            expected = [2.0, 4.0] -- Approximate, assuming linear interpolation
+        let input = V.fromList [1.0, 2.0, 3.0, 4.0, 5.0] :: Vector Float
+            result = Norm.percentile ([25.0, 75.0] :: [Float]) input
+            expected = [2.0, 4.0] :: [Float] -- Approximate, assuming linear interpolation
          in assertApproxEqual "Percentiles" 1e-5 result expected,
       testCase "small range percentiles" $
-        let input = V.fromList [1.0, 1.1, 1.2, 1.3, 1.4]
+        let input = V.fromList [1.0, 1.1, 1.2, 1.3, 1.4] :: Vector Float
             result = Norm.percentile [20.0, 80.0] input
-            expected = [1.08, 1.32]
+            expected = [1.08, 1.32] :: [Float]
          in assertApproxEqual "Percentiles" 1e-5 result expected,
       testCase "rangeNorm clamps and normalizes between 0 and 1" $
-        let input = V.fromList [1.0, 2.0, 3.0, 4.0, 5.0]
+        let input = V.fromList [1.0, 2.0, 3.0, 4.0, 5.0] :: Vector Float
             result = Norm.rangeNorm 25.0 75.0 input
-            expected = V.fromList [0.0, 0.0, 0.5, 1.0, 1.0] -- Based on 25th=2, 75th=4
+            expected = V.fromList [0.0, 0.0, 0.5, 1.0, 1.0] :: Vector Float -- Based on 25th=2, 75th=4
          in assertApproxEqual "Normalized values" 1e-5 (V.toList result) (V.toList expected),
       testCase "rangeNorm handles edge case with small range" $
-        let input = V.fromList [1.0, 1.1, 1.2, 1.3, 1.4]
+        let input = V.fromList [1.0, 1.1, 1.2, 1.3, 1.4] :: Vector Float
             result = Norm.rangeNorm 20.0 80.0 input
-            expected = V.fromList [0.0, 1 / 12, 1 / 2, 11 / 12, 1] -- Approx, small range
+            expected = V.fromList [0.0, 1 / 12, 1 / 2, 11 / 12, 1] :: Vector Float -- Approx, small range
          in assertApproxEqual "Small range normalization" 1e-5 (V.toList result) (V.toList expected)
     ]
 
 -- Helper function for approximate equality due to floating-point imprecision
-assertApproxEqual :: String -> Double -> [Double] -> [Double] -> Assertion
+assertApproxEqual :: (Num a, Ord a, Show a) => String -> a -> [a] -> [a] -> Assertion
 assertApproxEqual msg eps actual expected =
   let pairs = zip actual expected
       diffs = map (\(a, e) -> abs (a - e) <= eps) pairs

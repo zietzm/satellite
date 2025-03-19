@@ -5,7 +5,7 @@ module Signals
     filtFilt,
     lowpassVec,
     fourierResample,
-    interp,
+    interpCoords,
   )
 where
 
@@ -78,24 +78,21 @@ fourierResample nNew xs = result
     resampled' = V.map (* (fromIntegral nNew / fromIntegral nOrig)) resampled
     result = V.map double2Float resampled'
 
--- | @interp@ linearly interpolate a 1D signal at new coordinates
-interp :: (Ord a, Fractional a, Storable a) => Vector a -> Vector a -> Vector a -> Vector a
-interp xOld yOld xNew
-  | V.null xOld || V.null yOld = V.fromList [] -- Handle empty inputs
-  | V.length xOld /= V.length yOld = V.fromList [] -- Handle mismatched lengths
-  | otherwise = V.fromList $ go 0 0 []
+-- | @interpCoords@ interpolate a 1D signal at new coordinates, assuming that the index of the
+-- input vector is the x-coordinate, and the new x-coordinates are on this same
+-- scale.
+interpCoords :: (RealFrac a, Storable a) => Vector a -> Vector a -> Vector a
+interpCoords yOld xNew
+  | V.null yOld || V.null xNew = V.empty
+  | otherwise = V.map getNearest xNew
   where
-    nNew = V.length xNew
-
-    go newP oldP ys
-      | newP >= nNew = reverse ys
-      | x <= V.head xOld = go (newP + 1) oldP (V.head yOld : ys)
-      | x >= V.last xOld = go (newP + 1) oldP (V.last yOld : ys)
-      | xOld V.! oldP <= x && x <= xOld V.! (oldP + 1) = go (newP + 1) oldP (yNew : ys)
-      | otherwise = go newP (oldP + 1) ys
+    nOld = fromIntegral $ V.length yOld
+    getNearest x
+      | x <= 0.0 = V.head yOld
+      | x >= nOld = V.last yOld
+      | otherwise = y0 + (x - x0) * slope
       where
-        x = xNew V.! newP
-        slope =
-          ((yOld V.! (oldP + 1)) - (yOld V.! oldP))
-            / ((xOld V.! (oldP + 1)) - (xOld V.! oldP))
-        yNew = (yOld V.! oldP) + (x - (xOld V.! oldP)) * slope
+        x0 = fromIntegral (floor x :: Int)
+        y0 = yOld V.! floor x
+        y1 = yOld V.! (floor x + 1)
+        slope = y1 - y0
