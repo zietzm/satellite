@@ -2,6 +2,7 @@
 
 [![Haskell](https://img.shields.io/badge/Haskell-5e5086?logo=haskell&logoColor=white)](#)
 [![Nix](https://img.shields.io/badge/Nix-5277C3.svg?&logo=NixOS&logoColor=white)](#)
+[![Tests](https://github.com/zietzm/satellite/actions/workflows/ci.yml/badge.svg)](https://github.com/zietzm/satellite/actions/workflows/ci.yml)
 
 A tool to decode NOAA APT satellite signals from `.wav` recordings into grayscale satellite images.
 
