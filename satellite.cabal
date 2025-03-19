@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       Export
+      Lib
       Norm
       Signals
       Sync
@@ -43,7 +44,10 @@ library
     , base >=4.7 && <5
     , bytestring
     , cereal
+    , cmdargs
     , dsp >=0.2.5 && <0.3
+    , mtl
+    , transformers
     , vector >=0.13.1 && <0.14
     , vector-algorithms >=0.9.0 && <0.10
     , vector-fftw >=0.1.4 && <0.2
@@ -65,8 +69,11 @@ executable satellite-exe
     , base >=4.7 && <5
     , bytestring
     , cereal
+    , cmdargs
     , dsp >=0.2.5 && <0.3
+    , mtl
     , satellite
+    , transformers
     , vector >=0.13.1 && <0.14
     , vector-algorithms >=0.9.0 && <0.10
     , vector-fftw >=0.1.4 && <0.2
@@ -89,10 +96,13 @@ test-suite satellite-test
     , base >=4.7 && <5
     , bytestring
     , cereal
+    , cmdargs
     , dsp >=0.2.5 && <0.3
+    , mtl
     , satellite
     , tasty
     , tasty-hunit
+    , transformers
     , vector >=0.13.1 && <0.14
     , vector-algorithms >=0.9.0 && <0.10
     , vector-fftw >=0.1.4 && <0.2

@@ -1,84 +1,54 @@
+{-# LANGUAGE DeriveDataTypeable #-}
+
 module Main (main) where
 
-import Data.Function ((&))
+import Codec.Picture.Types as Img
+import Control.Monad (unless)
+import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Except (ExceptT, except, runExceptT, throwE)
+import Data.Bifunctor (first)
 import qualified Data.Vector.Storable as V
 import qualified Export
-import qualified Norm
-import qualified Signals
-import qualified Sync
+import qualified Lib
+import System.Console.CmdArgs ((&=))
+import qualified System.Console.CmdArgs as Cmd
 import qualified Wav
 
-actualDecode :: IO ()
-actualDecode = do
-  let upFactor = 4
-  (info, rawSamples) <- Wav.readWAV "/Users/zietzm/projects/sdr/noaa/noaa19_short.wav"
-  putStrLn $ "Info: " ++ show info
+data Decoder = Decoder
+  { input :: FilePath,
+    output :: FilePath,
+    verbose :: Bool,
+    upsampleFactor :: Int
+  }
+  deriving (Show, Cmd.Data, Cmd.Typeable)
 
-  let fs = fromIntegral $ Wav.sampleRate info :: Int
-  let sampleRate = fromIntegral fs :: Float
-  putStrLn $ "Sample rate: " ++ show sampleRate
-
-  let factor = upFactor * 2 * Sync.wordsPerLine / sampleRate
-  let nResampled = round $ fromIntegral (V.length rawSamples) * factor
-  putStrLn $ "Number of resampled points: " ++ show nResampled
-
-  let processed =
-        rawSamples
-          & Norm.maxNorm
-          & Signals.getEnvelope
-          & Signals.lowpassVec 1.5 sampleRate Sync.wordsPerLine
-          & Signals.fourierResample nResampled
-          & Norm.meanNorm
-
-  putStrLn $ "Processed: " ++ show (V.take 5 processed)
-  putStrLn $ "N processed: " ++ show (V.length processed)
-
-  let filterA = Sync.upsamplePattern 4 Sync.syncA
-  let filterB = Sync.upsamplePattern 4 Sync.syncB
-  let aPulses = Sync.crossCorr filterA processed
-  let bPulses = Sync.crossCorr filterB processed
-
-  putStrLn $ "Sync A: " ++ show (V.take 5 aPulses)
-  putStrLn $ "Sync B: " ++ show (V.take 5 bPulses)
-  putStrLn $ "Sync A length: " ++ show (V.length aPulses)
-  putStrLn $ "Sync B length: " ++ show (V.length bPulses)
-
-  let newFs = sampleRate * factor / Sync.linesPerSecond
-  let samplesPerLine = newFs
-
-  let aMinH = 1.5 * V.sum aPulses / fromIntegral (V.length aPulses)
-  let bMinH = 1.5 * V.sum bPulses / fromIntegral (V.length bPulses)
-  let distance = round (0.8 * samplesPerLine)
-  let aPeaks = Sync.findPeaks aMinH distance aPulses
-  let bPeaks = Sync.findPeaks bMinH distance bPulses
-  putStrLn $ "Peaks A: " ++ show (V.take 5 aPeaks)
-  putStrLn $ "Peaks B: " ++ show (V.take 5 bPeaks)
-
-  let (aPeaks', bPeaks') = Sync.alignPeaks aPeaks bPeaks
-  putStrLn $ "Aligned A: " ++ show (V.take 5 aPeaks')
-  putStrLn $ "Aligned B: " ++ show (V.take 5 bPeaks')
-
-  putStrLn $ "Inputs: " ++ show (round samplesPerLine, V.head aPeaks', V.head bPeaks')
-  let sampleCoords = Sync.getSampleCoords (round samplesPerLine) 2080 aPeaks' bPeaks' :: V.Vector Float
-  putStrLn $ "Sample coordinates: " ++ show (V.take 5 sampleCoords) ++ show (V.last sampleCoords)
-  putStrLn $ "Sample coordinates length: " ++ show (V.length sampleCoords)
-
-  -- Interpolate the image at some given points (downsample)
-  let xOld = V.enumFromN 0 (V.length processed)
-  let interpolated = Signals.interp xOld processed sampleCoords
-  putStrLn $ "Interpolated: " ++ show (V.take 5 interpolated) ++ show (V.last interpolated)
-  putStrLn $ "Interpolated length: " ++ show (V.length interpolated)
-
-  let normed = Norm.rangeNorm 1 99 interpolated
-  let final = V.map (\x -> fromInteger $ floor (x * 255)) normed
-  putStrLn $ "Final: " ++ show (V.take 5 final) ++ " " ++ show (V.last final) ++ " " ++ show (V.maximum final)
-
-  let img = Export.resolveImage final 2080 (V.length final `div` 2080)
-  result <- Export.saveImg "/Users/zietzm/projects/satellite/TEST_HS.png" img
-  case result of
-    Left err -> putStrLn $ "Error writing PNG: " ++ err
-    Right True -> putStrLn "PNG written successfully!"
-    Right False -> putStrLn "Failed to write PNG, but no specific error."
+decoder :: Decoder
+decoder =
+  Decoder
+    { input = Cmd.def &= Cmd.argPos 0 &= Cmd.typ "INPUT",
+      output = Cmd.def &= Cmd.argPos 1 &= Cmd.typ "OUTPUT",
+      verbose = Cmd.def &= Cmd.help "Print verbose output",
+      upsampleFactor = 4 &= Cmd.opt "4" &= Cmd.help "Upsampling level at which to perform computations"
+    }
+    &= Cmd.summary "SatelliteDecoder v1.0 - Decode NOAA APT files from WAV to PNG"
+    &= Cmd.program "satellite-decoder"
 
 main :: IO ()
-main = actualDecode
+main = runExceptT happyPath >>= either (putStrLn . ("Error: " ++)) (const $ putStrLn "PNG written successfully!")
+  where
+    happyPath :: ExceptT String IO ()
+    happyPath = do
+      args <- lift $ Cmd.cmdArgs decoder
+      let infile = input args
+      (info, rawSamples) <- lift $ Wav.readWAV infile
+      let upFactor = upsampleFactor args
+      img <- except $ first show $ Lib.decodeApt upFactor info rawSamples
+      lift $ putStrLn $ accessInternalImage img
+      let outfile = output args
+      success <- except =<< lift (Export.saveImg outfile img)
+      unless success $ throwE "Failed to write PNG"
+
+accessInternalImage :: DynamicImage -> String
+accessInternalImage dynImg = case dynImg of
+  ImageY8 img -> "Got grayscale image: " ++ show (V.take 5 $ Img.imageData img)
+  _ -> "Unsupported image format"

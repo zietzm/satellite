@@ -30,6 +30,9 @@ dependencies:
 - bytestring
 - JuicyPixels
 - cereal
+- cmdargs
+- mtl
+- transformers
 
 ghc-options:
 - -Wall
