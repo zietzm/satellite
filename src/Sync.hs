@@ -83,9 +83,9 @@ oaCrossCorr :: (RealFrac a, Storable a) => Vector a -> Vector a -> Vector a
 oaCrossCorr fs xs =
   let m = V.length fs
       nX = V.length xs
-      n = 8 * 2 ^ (ceiling (logBase 2.0 (fromIntegral m :: Double)) :: Integer) :: Int
+      n = 8 * 2 ^ (ceiling (logBase 2.0 (fromIntegral m :: Double)) :: Int)
       stepSize = n - (m - 1)
-      h = V.map C.conjugate $ Signals.fftNReal n fs
+      h = Signals.fftNReal n (V.reverse fs)
    in ST.runST $ do
         y <- VM.replicate (nX + m - 1) 0
         forM_ [0, stepSize .. nX - 1] $ \position -> do
@@ -96,7 +96,7 @@ oaCrossCorr fs xs =
               ySeg = Signals.ifftReal $ V.zipWith (*) segFft h
           forM_ [0 .. segLen + m - 2] $ \ix ->
             VM.modify y (+ (ySeg V.! ix)) (position + ix)
-        V.freeze y <&> V.take (nX - m + 1)
+        V.freeze y <&> V.slice (m - 1) (nX - m + 1)
 
 -- | @findPeaks@ finds peaks in a 1d signal that are at least height tall and
 -- distance from another peak. Mimics scipy.signal.find_peaks (with fewer options)
