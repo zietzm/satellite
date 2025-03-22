@@ -79,8 +79,20 @@ syncTests =
         Sync.oaCrossCorr Sync.syncA Sync.syncA @?= (V.fromList [40.0] :: V.Vector Float),
       testCase "Self-oaconvolve = length for syncB" $
         Sync.oaCrossCorr Sync.syncB Sync.syncB @?= (V.fromList [40.0] :: V.Vector Float),
+      testCase "Correlation simple example" $
+        let fs = V.enumFromN 1 4
+            xs = V.enumFromN 0 100
+            expected = V.fromList [20, 30 .. 980] :: V.Vector Float
+         in Sync.crossCorr fs xs @?= expected,
+      testCase "OA-Correlation simple example" $
+        let fs = V.enumFromN 1 4
+            xs = V.enumFromN 0 100
+            expected = V.fromList [20, 30 .. 980] :: V.Vector Float
+         in Sync.oaCrossCorr fs xs @?= expected,
       testCase "Self-oaconvolve SIMPLE" $
         Sync.oaCrossCorr (V.fromList [1.0, 2]) (V.fromList [1.0, 1, 1]) @?= (V.fromList [3, 3] :: V.Vector Float),
+      testCase "Correlations equivalent" $
+        assertBool ("Correlation methods not equal: " ++ show difference) (difference < 1e-6),
       testCase "Adjust pattern 2 [1,2] -> [1,1,2,2]" $
         let raw = V.fromList [1.0, 2.0] :: V.Vector Float
             expected = V.fromList [1.0, 1.0, 2.0, 2.0] :: V.Vector Float
@@ -97,6 +109,13 @@ syncTests =
     peakHeights = V.map (heights V.!) basicPeaks
     filteredPeaks = Sync.prioritizeHighest 2 peakHeights basicPeaks
     peaks = Sync.findPeaks 0 2 heights
+    -- Test oacrosscorr = crosscorr
+    t2 = V.generate 50 ((* 0.01) . int2Float) :: Vector Float
+    x2 = V.map (sin . (* (2 * pi * 10))) t2
+    fs1 = V.take 3 Sync.syncA
+    ccResult = Sync.crossCorr fs1 x2
+    oaResult = Sync.oaCrossCorr fs1 x2
+    difference = maxDiffF ccResult oaResult
 
 normTests :: TestTree
 normTests =
