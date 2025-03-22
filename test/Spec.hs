@@ -75,6 +75,12 @@ syncTests =
         Sync.crossCorr Sync.syncA Sync.syncA @?= (V.fromList [40.0] :: V.Vector Float),
       testCase "Self-convolve = length for syncB" $
         Sync.crossCorr Sync.syncB Sync.syncB @?= (V.fromList [40.0] :: V.Vector Float),
+      testCase "Self-oaconvolve = length for syncA" $
+        Sync.oaCrossCorr Sync.syncA Sync.syncA @?= (V.fromList [40.0] :: V.Vector Float),
+      testCase "Self-oaconvolve = length for syncB" $
+        Sync.oaCrossCorr Sync.syncB Sync.syncB @?= (V.fromList [40.0] :: V.Vector Float),
+      testCase "Self-oaconvolve SIMPLE" $
+        Sync.oaCrossCorr (V.fromList [1.0, 2]) (V.fromList [1.0, 1, 1]) @?= (V.fromList [3, 3] :: V.Vector Float),
       testCase "Adjust pattern 2 [1,2] -> [1,1,2,2]" $
         let raw = V.fromList [1.0, 2.0] :: V.Vector Float
             expected = V.fromList [1.0, 1.0, 2.0, 2.0] :: V.Vector Float

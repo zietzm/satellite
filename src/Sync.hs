@@ -3,6 +3,7 @@ module Sync
     syncB,
     upsamplePattern,
     crossCorr,
+    oaCrossCorr,
     findPeaks,
     findBasicPeaks,
     prioritizeHighest,
@@ -13,9 +14,15 @@ module Sync
   )
 where
 
+import Control.Monad (forM_)
+import qualified Control.Monad.ST as ST
+import qualified Data.Complex as C
+import Data.Functor ((<&>))
 import Data.List (sort, sortBy)
 import Data.Vector.Storable (Storable, Vector)
 import qualified Data.Vector.Storable as V
+import qualified Data.Vector.Storable.Mutable as VM
+import qualified Signals
 
 -- | @wordsPerLine@ the number of words per line in the NOAA APT format
 wordsPerLine :: Float
@@ -69,6 +76,27 @@ crossCorr fs xs = V.generate n getElem
     n2 = V.length xs
     n = max n1 n2 - min n1 n2 + 1
     getElem i = V.sum $ V.zipWith (*) fs (V.drop i xs)
+
+-- | @oaCrossCorr@ compute the cross-correlation using the overlap-add FFT method
+-- (Overlap-add algorithm for linear convolution)
+oaCrossCorr :: (RealFloat a, Storable a) => Vector a -> Vector a -> Vector a
+oaCrossCorr fs xs =
+  let m = V.length fs
+      nX = V.length xs
+      n = 8 * 2 ^ (ceiling (logBase 2.0 (fromIntegral m :: Double)) :: Integer) :: Int
+      stepSize = n - (m - 1)
+      h = V.map C.conjugate $ Signals.fftN n fs
+   in ST.runST $ do
+        y <- VM.replicate (nX + m - 1) 0
+        forM_ [0, stepSize .. nX - 1] $ \position -> do
+          let segEnd = min (position + stepSize) nX
+              segLen = segEnd - position
+              seg = V.slice position segLen xs
+              segFft = Signals.fftN n seg
+              ySeg = Signals.ifft $ V.zipWith (*) segFft h
+          forM_ [0 .. segLen + m - 2] $ \ix ->
+            VM.modify y (+ (ySeg V.! ix)) (position + ix)
+        V.freeze y <&> V.take (nX - m + 1)
 
 -- | @findPeaks@ finds peaks in a 1d signal that are at least height tall and
 -- distance from another peak. Mimics scipy.signal.find_peaks (with fewer options)

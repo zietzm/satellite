@@ -1,7 +1,9 @@
 module Signals
   ( getEnvelope,
     fft,
+    ifft,
     ifftMagnitude,
+    fftN,
     filtFilt,
     lowpassVec,
     fourierResample,
@@ -17,17 +19,26 @@ import qualified Data.Vector.Storable as V
 import GHC.Float (double2Float, float2Double)
 import qualified Numeric.FFT.Vector.Invertible as FFTW
 
-fft :: Vector Float -> Vector (Complex Double)
+fft :: (Real a, Storable a) => Vector a -> Vector (Complex Double)
 fft = FFTW.run FFTW.dft . toFftType
 
-ifftMagnitude :: Vector (Complex Double) -> Vector Float
-ifftMagnitude = getMagnitudes . FFTW.run FFTW.idft
+ifft :: (RealFloat a, Storable a) => Vector (Complex Double) -> Vector a
+ifft = V.map (realToFrac . C.realPart) . FFTW.run FFTW.idft
 
-toFftType :: Vector Float -> Vector (Complex Double)
-toFftType = V.map ((:+ 0) . float2Double)
+ifftMagnitude :: (RealFloat a, Storable a) => Vector (Complex Double) -> Vector a
+ifftMagnitude = V.map (realToFrac . C.magnitude) . FFTW.run FFTW.idft
 
-getMagnitudes :: Vector (Complex Double) -> Vector Float
-getMagnitudes = V.map (double2Float . C.magnitude)
+toFftType :: (Real a, Storable a) => V.Vector a -> V.Vector (Complex Double)
+toFftType = V.map toComplexDouble
+
+toComplexDouble :: (Real a) => a -> Complex Double
+toComplexDouble x = realToFrac x :+ 0
+
+fftN :: (Real a, Storable a) => Int -> Vector a -> Vector (Complex Double)
+fftN n xs = fft padded
+  where
+    nPad = n - V.length xs
+    padded = xs V.++ V.replicate nPad 0
 
 -- | Compute the envelope of a signal using FFT-based Hilbert transform
 getEnvelope :: Vector Float -> Vector Float
@@ -57,6 +68,8 @@ filtFilt bw fs fc = reverse . lpf bw w . reverse . lpf bw w
   where
     w = 2 * pi * fc / fs -- Normalized angular frequency
 
+-- | Apply a low pass filter to data. Params are bandwidth and sampling and cutoff
+-- frequencies.
 lowpassVec :: (Floating a, Storable a) => a -> a -> a -> Vector a -> Vector a
 lowpassVec bw fs fc = V.fromList . filtFilt bw fs fc . V.toList
 

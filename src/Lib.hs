@@ -64,14 +64,14 @@ decodeApt upsample info samples = do
 
   Right img
 
-findSyncPeaks :: (RealFrac a, V.Storable a) => Int -> a -> V.Vector a -> (V.Vector Int, V.Vector Int)
+findSyncPeaks :: (RealFloat a, V.Storable a) => Int -> a -> V.Vector a -> (V.Vector Int, V.Vector Int)
 findSyncPeaks upfactor fs xs = (aPeaks', bPeaks')
   where
     -- Convolve with sync patterns to find line starts/stops
     filterA = Sync.upsamplePattern upfactor Sync.syncA
     filterB = Sync.upsamplePattern upfactor Sync.syncB
-    aPulses = Sync.crossCorr filterA xs
-    bPulses = Sync.crossCorr filterB xs
+    aPulses = Sync.oaCrossCorr filterA xs
+    bPulses = Sync.oaCrossCorr filterB xs
 
     -- Find peaks in the convolution outputs
     aMinH = 1.5 * V.sum aPulses / fromIntegral (V.length aPulses)
