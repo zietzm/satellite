@@ -2,12 +2,10 @@
 
 module Main (main) where
 
-import Codec.Picture.Types as Img
 import Control.Monad (unless)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except (ExceptT, except, runExceptT, throwE)
 import Data.Bifunctor (first)
-import qualified Data.Vector.Storable as V
 import qualified Export
 import qualified Lib
 import System.Console.CmdArgs ((&=))
@@ -43,12 +41,6 @@ main = runExceptT happyPath >>= either (putStrLn . ("Error: " ++)) (const $ putS
       (info, rawSamples) <- lift $ Wav.readWAV infile
       let upFactor = upsampleFactor args
       img <- except $ first show $ Lib.decodeApt upFactor info rawSamples
-      lift $ putStrLn $ accessInternalImage img
       let outfile = output args
       success <- except =<< lift (Export.saveImg outfile img)
       unless success $ throwE "Failed to write PNG"
-
-accessInternalImage :: DynamicImage -> String
-accessInternalImage dynImg = case dynImg of
-  ImageY8 img -> "Got grayscale image: " ++ show (V.take 5 $ Img.imageData img)
-  _ -> "Unsupported image format"
