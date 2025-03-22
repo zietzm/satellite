@@ -40,6 +40,31 @@ dspTests =
             filtered' = V.fromList $ map double2Float filtered
             maxDiffFilt = maxDiffF (V.drop 10 filtered') (V.drop 10 xLow)
          in assertBool ("Filter error" ++ show maxDiffFilt) (maxDiffFilt < 5e-3),
+      testCase "Real FFT N" $
+        let x = V.enumFromN 0 5 :: Vector Float
+            found = Signals.fftNReal 16 x :: Vector (Complex Double)
+            expected =
+              V.fromList
+                [ 10.00000 :+ 0.00000,
+                  3.48614 :+ negate 8.56854,
+                  negate 5.41421 :+ negate 4.82843,
+                  negate 3.80317 :+ 2.80996,
+                  2.00000 :+ 2.00000,
+                  0.97474 :+ negate 2.36162,
+                  negate 2.58579 :+ negate 0.82843,
+                  negate 0.65772 :+ 2.25989,
+                  2.00000 :+ 0.00000,
+                  negate 0.65772 :+ negate 2.25989,
+                  negate 2.58579 :+ 0.82843,
+                  0.97474 :+ 2.36162,
+                  2.00000 :+ negate 2.00000,
+                  negate 3.80317 :+ negate 2.80996,
+                  negate 5.41421 :+ 4.82843,
+                  3.48614 :+ 8.56854
+                ] ::
+                Vector (Complex Double)
+            difference = V.maximum $ V.zipWith (\i j -> C.magnitude (i - j)) found expected
+         in assertBool ("Mismatch: " ++ show found) (difference < 1e-5),
       testCase "Downsampling length" $
         V.length rDown @?= V.length expectDown,
       testCase "Upsampling length" $
