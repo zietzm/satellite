@@ -1,6 +1,7 @@
 module Signals
   ( getEnvelope,
     fft,
+    fftReal,
     ifft,
     ifftMagnitude,
     fftN,
@@ -22,6 +23,9 @@ import qualified Numeric.FFT.Vector.Invertible as FFTW
 
 fft :: (Real a, Storable a) => Vector a -> Vector (Complex Double)
 fft = FFTW.run FFTW.dft . toFftType
+
+fftReal :: (Real a, Storable a) => Vector a -> Vector (Complex Double)
+fftReal = FFTW.run FFTW.dftR2C . V.map realToFrac
 
 ifft :: (RealFloat a, Storable a) => Vector (Complex Double) -> Vector a
 ifft = V.map (realToFrac . C.realPart) . FFTW.run FFTW.idft
@@ -54,9 +58,10 @@ ifftReal = V.map realToFrac . FFTW.run FFTW.dftC2R
 getEnvelope :: (RealFloat a, Storable a) => Vector a -> Vector a
 getEnvelope signal = envelope
   where
-    -- Compute FFT
-    fftResult = fft signal
-    n = V.length fftResult -- Same as input length per vector-fftw docs
+    n = V.length signal
+    fftResult = fftReal signal
+    nFft = n `div` 2 + 1
+    nToPad = n - nFft
 
     -- Create mask for the Hilbert transform
     hilbertMask :: Int -> Complex Double -> Complex Double
@@ -67,7 +72,7 @@ getEnvelope signal = envelope
       | otherwise = 0.0 -- Negative frequencies
 
     -- Apply multiplier to get analytic signal in frequency domain
-    analyticFreq = V.imap hilbertMask fftResult
+    analyticFreq = V.imap hilbertMask fftResult V.++ V.replicate nToPad (0 :+ 0)
 
     -- Inverse FFT to get analytic signal in time domain, get magnitude
     envelope = ifftMagnitude analyticFreq
