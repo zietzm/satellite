@@ -4,6 +4,8 @@ module Signals
     ifft,
     ifftMagnitude,
     fftN,
+    fftNReal,
+    ifftReal,
     filtFilt,
     lowpassVec,
     fourierResample,
@@ -16,7 +18,6 @@ import Data.Complex (Complex ((:+)))
 import qualified Data.Complex as C
 import Data.Vector.Storable (Storable, Vector)
 import qualified Data.Vector.Storable as V
-import GHC.Float (double2Float, float2Double)
 import qualified Numeric.FFT.Vector.Invertible as FFTW
 
 fft :: (Real a, Storable a) => Vector a -> Vector (Complex Double)
@@ -40,13 +41,22 @@ fftN n xs = fft padded
     nPad = n - V.length xs
     padded = xs V.++ V.replicate nPad 0
 
+fftNReal :: (RealFrac a, Storable a) => Int -> Vector a -> Vector (Complex Double)
+fftNReal n xs = FFTW.run FFTW.dftR2C padded
+  where
+    nPad = n - V.length xs
+    padded = V.map realToFrac xs V.++ V.replicate nPad 0
+
+ifftReal :: (RealFrac a, Storable a) => Vector (Complex Double) -> Vector a
+ifftReal = V.map realToFrac . FFTW.run FFTW.dftC2R
+
 -- | Compute the envelope of a signal using FFT-based Hilbert transform
-getEnvelope :: Vector Float -> Vector Float
+getEnvelope :: (RealFloat a, Storable a) => Vector a -> Vector a
 getEnvelope signal = envelope
   where
     -- Compute FFT
     fftResult = fft signal
-    n = V.length fftResult -- Should be same as input length per docs
+    n = V.length fftResult -- Same as input length per vector-fftw docs
 
     -- Create mask for the Hilbert transform
     hilbertMask :: Int -> Complex Double -> Complex Double
@@ -73,23 +83,21 @@ filtFilt bw fs fc = reverse . lpf bw w . reverse . lpf bw w
 lowpassVec :: (Floating a, Storable a) => a -> a -> a -> Vector a -> Vector a
 lowpassVec bw fs fc = V.fromList . filtFilt bw fs fc . V.toList
 
-fourierResample :: Int -> Vector Float -> Vector Float
+fourierResample :: (RealFrac a, Storable a) => Int -> Vector a -> Vector a
 fourierResample nNew xs = result
   where
     nOrig = V.length xs
     mOrig = nOrig `div` 2 + 1
     mNew = nNew `div` 2 + 1
-    xs' = V.map float2Double xs
+    xs' = V.map realToFrac xs
     fftX = FFTW.run FFTW.dftR2C xs'
     changeLen vec
       | mNew <= mOrig = V.take mNew vec
       | otherwise = vec V.++ V.replicate (mNew - mOrig) 0.0
     fftX' = changeLen fftX
     resampled = FFTW.run FFTW.dftC2R fftX'
-    -- result = V.map double2Float resampled
-    -- resampled' = V.map (* (fromIntegral nOrig / fromIntegral nNew)) resampled
     resampled' = V.map (* (fromIntegral nNew / fromIntegral nOrig)) resampled
-    result = V.map double2Float resampled'
+    result = V.map realToFrac resampled'
 
 -- | @interpCoords@ interpolate a 1D signal at new coordinates, assuming that the index of the
 -- input vector is the x-coordinate, and the new x-coordinates are on this same

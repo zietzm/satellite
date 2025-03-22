@@ -79,21 +79,21 @@ crossCorr fs xs = V.generate n getElem
 
 -- | @oaCrossCorr@ compute the cross-correlation using the overlap-add FFT method
 -- (Overlap-add algorithm for linear convolution)
-oaCrossCorr :: (RealFloat a, Storable a) => Vector a -> Vector a -> Vector a
+oaCrossCorr :: (RealFrac a, Storable a) => Vector a -> Vector a -> Vector a
 oaCrossCorr fs xs =
   let m = V.length fs
       nX = V.length xs
       n = 8 * 2 ^ (ceiling (logBase 2.0 (fromIntegral m :: Double)) :: Integer) :: Int
       stepSize = n - (m - 1)
-      h = V.map C.conjugate $ Signals.fftN n fs
+      h = V.map C.conjugate $ Signals.fftNReal n fs
    in ST.runST $ do
         y <- VM.replicate (nX + m - 1) 0
         forM_ [0, stepSize .. nX - 1] $ \position -> do
           let segEnd = min (position + stepSize) nX
               segLen = segEnd - position
               seg = V.slice position segLen xs
-              segFft = Signals.fftN n seg
-              ySeg = Signals.ifft $ V.zipWith (*) segFft h
+              segFft = Signals.fftNReal n seg
+              ySeg = Signals.ifftReal $ V.zipWith (*) segFft h
           forM_ [0 .. segLen + m - 2] $ \ix ->
             VM.modify y (+ (ySeg V.! ix)) (position + ix)
         V.freeze y <&> V.take (nX - m + 1)
