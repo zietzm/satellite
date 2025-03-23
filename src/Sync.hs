@@ -16,7 +16,6 @@ where
 
 import Control.Monad (forM_)
 import qualified Control.Monad.ST as ST
-import qualified Data.Complex as C
 import Data.Functor ((<&>))
 import Data.List (sort, sortBy)
 import Data.Vector.Storable (Storable, Vector)
